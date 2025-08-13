@@ -395,7 +395,13 @@ async def setup_commands(bot: commands.Bot):
                 target_member.display_name
             )
             
-            contributions = DatabaseManager.get_member_contributions(
+            # Get total points for this member
+            total_points = DatabaseManager.get_member_points(
+                interaction.guild.id,
+                target_member.id
+            )
+            
+            contributions = DatabaseManager.get_member_contributions_with_points(
                 interaction.guild.id,
                 target_member.id
             )
@@ -409,36 +415,37 @@ async def setup_commands(bot: commands.Bot):
                 await interaction.response.send_message(embed=embed)
                 return
             
-            # Group contributions by material
+            # Group contributions by material and calculate totals
             material_totals = {}
             for contrib in contributions:
                 material = contrib['material_name']
+                amount = contrib['amount']
+                points = contrib['points']
+                
                 if material in material_totals:
-                    material_totals[material] += contrib['amount']
+                    material_totals[material]['amount'] += amount
+                    material_totals[material]['points'] += points
                 else:
-                    material_totals[material] = contrib['amount']
+                    material_totals[material] = {
+                        'amount': amount,
+                        'points': points,
+                        'value_per_unit': contrib['value_per_unit']
+                    }
             
             embed = discord.Embed(
                 title=f"📊 {target_member.display_name}'s Contributions",
+                description=f"**Total Contribution Points: {total_points:,.2f}**",
                 color=0x0099ff
             )
             embed.set_thumbnail(url=target_member.avatar.url if target_member.avatar else target_member.default_avatar.url)
             
-            # Add fields for each material
-            total_contributions = 0
-            for material, amount in sorted(material_totals.items(), key=lambda x: x[1], reverse=True):
+            # Add fields for each material with points
+            for material, data in sorted(material_totals.items(), key=lambda x: x[1]['points'], reverse=True):
                 embed.add_field(
                     name=material,
-                    value=f"{amount:,}",
+                    value=f"{data['amount']:,} units\n{data['points']:.2f} points",
                     inline=True
                 )
-                total_contributions += amount
-            
-            embed.add_field(
-                name="🏆 Total Contributions",
-                value=f"{total_contributions:,}",
-                inline=False
-            )
             
             embed.set_footer(text=f"Guild: {interaction.guild.name} • Total entries: {len(contributions)}")
             await interaction.response.send_message(embed=embed)
