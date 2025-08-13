@@ -124,6 +124,8 @@ class AIService:
                 return False, "OpenAI API quota exceeded. Please check your API key billing."
             elif "invalid_api_key" in error_msg:
                 return False, "Invalid OpenAI API key. Please check the configuration."
+            elif "429" in error_msg or "Too Many Requests" in error_msg:
+                return False, "OpenAI API rate limit exceeded. This usually means:\n• Your API key needs billing setup at https://platform.openai.com/billing\n• Or you've hit your usage limits\n• Try again in a few minutes"
             else:
                 return False, f"AI service error: {error_msg[:100]}..."
 
