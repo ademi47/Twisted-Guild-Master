@@ -232,7 +232,7 @@ class DatabaseManager:
             
             result = []
             for contribution, material in contributions:
-                points = float(contribution.amount * material.value) / 100.0
+                points = float(int(contribution.amount) * material.value) / 100.0
                 result.append({
                     "material_name": material.display_name,
                     "amount": contribution.amount,

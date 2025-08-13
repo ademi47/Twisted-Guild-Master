@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, String, BigInteger, DateTime, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, BigInteger, DateTime, ForeignKey, Numeric
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -72,7 +72,7 @@ class Contribution(Base):
     guild_id = Column(BigInteger, ForeignKey("guilds.id"), nullable=False)
     member_id = Column(BigInteger, ForeignKey("members.id"), nullable=False)
     material_id = Column(Integer, ForeignKey("materials.id"), nullable=False)
-    amount = Column(BigInteger, nullable=False)
+    amount = Column(Numeric, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
