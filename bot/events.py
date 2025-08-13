@@ -21,8 +21,14 @@ async def setup_events(bot: commands.Bot):
         try:
             synced = await bot.tree.sync()
             logger.info(f"Synced {len(synced)} slash commands")
+            
+            # Log the command names for debugging
+            command_names = [cmd.name for cmd in synced]
+            logger.info(f"Synced commands: {', '.join(command_names)}")
         except Exception as e:
             logger.error(f"Failed to sync slash commands: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
 
     @bot.event
     async def on_guild_join(guild):
