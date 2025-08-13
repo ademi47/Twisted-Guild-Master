@@ -5,6 +5,7 @@ import random
 import time
 import logging
 from database import DatabaseManager
+from ai_service import get_ai_service
 from typing import List
 
 logger = logging.getLogger(__name__)
@@ -501,5 +502,74 @@ async def setup_commands(bot: commands.Bot):
                 color=0xff0000
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # ==================== AI CONVERSATION COMMANDS ====================
+    
+    @bot.tree.command(name="ask", description="Ask AI a question (Daily limits: 25 per user, 500 per server)")
+    @app_commands.describe(question="Your question for the AI (max 4000 characters)")
+    async def ask_ai(interaction: discord.Interaction, question: str):
+        """AI conversation command with cost controls"""
+        if not interaction.guild:
+            embed = discord.Embed(
+                title="❌ Error",
+                description="This command can only be used in a server!",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        # Get AI service
+        ai_service = get_ai_service()
+        if not ai_service:
+            embed = discord.Embed(
+                title="❌ AI Service Unavailable",
+                description="AI service is not configured. Please check the OpenAI API key.",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        # Defer response since AI calls can take time
+        await interaction.response.defer()
+
+        try:
+            # Process AI request with safety checks
+            success, response = await ai_service.ask_ai(
+                guild_id=interaction.guild.id,
+                user_id=interaction.user.id,
+                prompt=question
+            )
+
+            if success:
+                # Successful AI response
+                embed = discord.Embed(
+                    title="🤖 AI Response",
+                    description=response,
+                    color=0x00ff00
+                )
+                embed.set_footer(text=f"Asked by {interaction.user.display_name}")
+                
+                # Split long responses if needed (Discord has 4096 char limit for embeds)
+                if len(response) > 4000:
+                    embed.description = response[:4000] + "... [Response truncated]"
+                
+                await interaction.followup.send(embed=embed)
+            else:
+                # Error response (quota exceeded, API issues, etc.)
+                embed = discord.Embed(
+                    title="❌ AI Request Failed",
+                    description=response,
+                    color=0xff0000
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+
+        except Exception as e:
+            logger.error(f"Error in ask command: {e}")
+            embed = discord.Embed(
+                title="❌ Unexpected Error",
+                description="An unexpected error occurred while processing your AI request. Please try again later.",
+                color=0xff0000
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
     logger.info("Commands setup complete")

@@ -10,6 +10,9 @@ A Python Discord bot with basic command handling and message interaction capabil
 - 👋 Greeting commands
 - 📊 Server and user information commands
 - 🎲 Fun commands (dice roll, coin flip)
+- 📈 Contribution tracking system with material autocomplete
+- 🏆 Leaderboards and contribution statistics
+- 🧠 AI conversations via `/ask` command with cost controls
 - 🔧 Comprehensive error handling
 - 📝 Detailed logging
 - 🎨 Rich embed messages

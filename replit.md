@@ -37,6 +37,7 @@ Preferred communication style: Simple, everyday language.
 - **Welcome System**: Automated welcome messages when joining new servers
 - **Contribution Tracking**: Database-powered system for logging and tracking guild member contributions with material autocomplete
 - **Leaderboards**: View top contributors and detailed contribution breakdowns per member
+- **AI Conversations**: OpenAI-powered `/ask` command with cost controls including daily usage limits (25 per user, 500 per server), prompt trimming, and token limits using gpt-4o-mini model
 
 ## External Dependencies
 
@@ -46,6 +47,7 @@ Preferred communication style: Simple, everyday language.
 - **asyncio**: Asynchronous programming support for Discord's async API
 - **sqlalchemy**: Database ORM for contribution tracking and data persistence
 - **psycopg2-binary**: PostgreSQL database adapter for Python
+- **openai**: OpenAI API client for AI conversation features
 
 ### Discord API Integration
 - **Discord Developer Portal**: Bot token and application management
@@ -53,6 +55,7 @@ Preferred communication style: Simple, everyday language.
 - **Discord REST API**: Command registration and message sending
 
 ### Configuration Requirements
-- **Environment Variables**: Discord bot token and configuration settings via `.env` file
+- **Environment Variables**: Discord bot token, OpenAI API key, and configuration settings via `.env` file
 - **Discord Permissions**: Requires specific bot permissions (Send Messages, Use Slash Commands, Read Message History, Embed Links, Add Reactions)
 - **Gateway Intents**: Message Content Intent enabled for reading message content
+- **AI Cost Controls**: Built-in usage tracking with configurable daily limits (DAILY_USER_LIMIT=25, DAILY_SERVER_LIMIT=500), input trimming (MAX_INPUT_CHARS=4000), output token limits (MAX_OUTPUT_TOKENS=600), and cost-effective model selection (gpt-4o-mini)

@@ -64,6 +64,19 @@ class Contribution(Base):
     member = relationship("Member", back_populates="contributions")
     material = relationship("Material", back_populates="contributions")
 
+class AIUsage(Base):
+    """AI usage tracking for cost control"""
+    __tablename__ = "ai_usage"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    guild_id = Column(BigInteger, nullable=False)  # Discord guild ID
+    user_id = Column(BigInteger, nullable=False)   # Discord user ID
+    prompt_chars = Column(Integer, nullable=False)  # Input character count
+    output_tokens = Column(Integer, nullable=False) # Output token count
+    model_used = Column(String, nullable=False)     # OpenAI model used
+    created_at = Column(DateTime, default=datetime.utcnow)
+    date_only = Column(String, nullable=False)      # YYYY-MM-DD for daily tracking
+
 # Create all tables
 def create_tables():
     """Create all database tables"""
