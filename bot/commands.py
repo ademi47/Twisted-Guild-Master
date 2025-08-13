@@ -460,19 +460,21 @@ async def setup_commands(bot: commands.Bot):
         """Autocomplete for material selection"""
         try:
             materials = DatabaseManager.get_all_materials()
+            logger.info(f"Loaded {len(materials)} materials for autocomplete")
             choices = []
             
             # Filter materials based on current input
-            for material in materials:
-                if current.lower() in material['display_name'].lower() or current.lower() in material['name'].lower():
-                    choices.append(app_commands.Choice(
-                        name=material['display_name'], 
-                        value=material['name']
-                    ))
-                    if len(choices) >= 25:  # Discord limit
-                        break
+            if current:
+                for material in materials:
+                    if current.lower() in material['display_name'].lower() or current.lower() in material['name'].lower():
+                        choices.append(app_commands.Choice(
+                            name=material['display_name'], 
+                            value=material['name']
+                        ))
+                        if len(choices) >= 25:  # Discord limit
+                            break
             
-            # If no matches, show all materials
+            # If no matches or no input, show all materials
             if not choices:
                 for material in materials[:25]:
                     choices.append(app_commands.Choice(
@@ -480,10 +482,18 @@ async def setup_commands(bot: commands.Bot):
                         value=material['name']
                     ))
             
+            logger.info(f"Returning {len(choices)} choices for autocomplete")
             return choices
         except Exception as e:
             logger.error(f"Error in material autocomplete: {e}")
-            return []
+            # Return some default choices so the command doesn't completely fail
+            return [
+                app_commands.Choice(name="Iron Ore", value="ironOre"),
+                app_commands.Choice(name="Iron Ingot", value="ironIngot"),
+                app_commands.Choice(name="Steel Ingot", value="steelIngot"),
+                app_commands.Choice(name="Spice Melange", value="spiceMelange"),
+                app_commands.Choice(name="Basalt Stone", value="basaltStone")
+            ]
 
     @bot.tree.command(name="contributions", description="View your contributions or another member's contributions")
     @app_commands.describe(member="The member to view contributions for (optional)")
