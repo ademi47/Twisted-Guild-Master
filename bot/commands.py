@@ -233,6 +233,27 @@ async def setup_commands(bot: commands.Bot):
             logger.error(f"Error getting material choices: {e}")
             return []
 
+    @bot.tree.command(name="testdb", description="Test database connection")
+    async def testdb(interaction: discord.Interaction):
+        """Test database connection"""
+        try:
+            materials = DatabaseManager.get_all_materials()
+            embed = discord.Embed(
+                title="✅ Database Test",
+                description=f"Database is working! Found {len(materials)} materials.",
+                color=0x00ff00
+            )
+            material_list = ", ".join([m['display_name'] for m in materials[:5]])
+            embed.add_field(name="Sample Materials", value=material_list, inline=False)
+            await interaction.response.send_message(embed=embed)
+        except Exception as e:
+            embed = discord.Embed(
+                title="❌ Database Error",
+                description=f"Database connection failed: {str(e)}",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed)
+
     @bot.tree.command(name="contribute", description="Log your contribution to the guild")
     @app_commands.describe(
         material="The material you're contributing",

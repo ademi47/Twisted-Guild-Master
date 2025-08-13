@@ -20,7 +20,7 @@ class DatabaseManager:
             session.close()
     
     @staticmethod
-    def ensure_member_exists(member_id: int, username: str, display_name: str = None) -> None:
+    def ensure_member_exists(member_id: int, username: str, display_name: Optional[str] = None) -> None:
         """Ensure member exists in database"""
         session = get_db_session()
         try:
@@ -35,9 +35,12 @@ class DatabaseManager:
                 session.commit()
             else:
                 # Update member info if changed
-                if member.username != username or member.display_name != (display_name or username):
-                    member.username = username
-                    member.display_name = display_name or username
+                current_display_name = display_name or username
+                if member.username != username or member.display_name != current_display_name:
+                    session.query(Member).filter(Member.id == member_id).update({
+                        'username': username,
+                        'display_name': current_display_name
+                    })
                     session.commit()
         finally:
             session.close()
