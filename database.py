@@ -1,5 +1,6 @@
 from models import get_db_session, Guild, Member, Material, Contribution
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional, Dict, Any
 import discord
 
@@ -51,7 +52,7 @@ class DatabaseManager:
         session = get_db_session()
         try:
             materials = session.query(Material).order_by(Material.display_name).all()
-            return [{"id": m.id, "name": m.name, "display_name": m.display_name} for m in materials]
+            return [{"id": m.id, "name": m.name, "display_name": m.display_name, "value": m.value} for m in materials]
         finally:
             session.close()
     
@@ -171,5 +172,74 @@ class DatabaseManager:
                 })
             
             return contributors
+        finally:
+            session.close()
+    
+    @staticmethod
+    def get_member_points(guild_id: int, member_id: int) -> float:
+        """Calculate total contribution points for a member"""
+        session = get_db_session()
+        try:
+            total_points = session.query(
+                func.sum(Contribution.amount * Material.value).label('points')
+            ).join(Material).filter(
+                Contribution.guild_id == guild_id,
+                Contribution.member_id == member_id
+            ).scalar()
+            
+            return (total_points or 0) / 100.0  # Convert back to decimal
+        finally:
+            session.close()
+    
+    @staticmethod
+    def get_top_contributors_by_points(guild_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get top contributors by points in a guild"""
+        session = get_db_session()
+        try:
+            results = session.query(
+                Member.display_name,
+                Member.username,
+                func.sum(Contribution.amount * Material.value).label('total_points')
+            ).join(Contribution).join(Material).filter(
+                Contribution.guild_id == guild_id
+            ).group_by(Member.id, Member.display_name, Member.username).order_by(
+                func.sum(Contribution.amount * Material.value).desc()
+            ).limit(limit).all()
+            
+            contributors = []
+            for display_name, username, total_points in results:
+                contributors.append({
+                    "display_name": display_name,
+                    "username": username,
+                    "total_points": (total_points or 0) / 100.0  # Convert to decimal
+                })
+            
+            return contributors
+        finally:
+            session.close()
+    
+    @staticmethod
+    def get_member_contributions_with_points(guild_id: int, member_id: int) -> List[Dict[str, Any]]:
+        """Get contributions with points calculation for a member"""
+        session = get_db_session()
+        try:
+            contributions = session.query(
+                Contribution, Material
+            ).join(Material).filter(
+                Contribution.guild_id == guild_id,
+                Contribution.member_id == member_id
+            ).all()
+            
+            result = []
+            for contribution, material in contributions:
+                points = (contribution.amount * material.value) / 100.0
+                result.append({
+                    "material_name": material.display_name,
+                    "amount": contribution.amount,
+                    "value_per_unit": material.value / 100.0,
+                    "points": points,
+                    "created_at": contribution.created_at
+                })
+            return result
         finally:
             session.close()

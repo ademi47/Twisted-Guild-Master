@@ -465,7 +465,7 @@ async def setup_commands(bot: commands.Bot):
             return
         
         try:
-            top_contributors = DatabaseManager.get_top_contributors(interaction.guild.id, 10)
+            top_contributors = DatabaseManager.get_top_contributors_by_points(interaction.guild.id, 10)
             
             if not top_contributors:
                 embed = discord.Embed(
@@ -487,7 +487,7 @@ async def setup_commands(bot: commands.Bot):
                 medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
                 embed.add_field(
                     name=f"{medal} {contributor['display_name']}",
-                    value=f"{contributor['total_contributions']:,} total contributions",
+                    value=f"{contributor['total_points']:,.2f} contribution points",
                     inline=False
                 )
             
