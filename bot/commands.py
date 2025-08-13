@@ -386,6 +386,18 @@ async def setup_commands(bot: commands.Bot):
                 )
                 await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
+            
+            # Check if amount exceeds BIGINT maximum value
+            max_bigint = 9223372036854775807
+            if amount_int > max_bigint:
+                embed = discord.Embed(
+                    title="❌ Amount Too Large",
+                    description=f"Maximum contribution amount is {max_bigint:,}.\nYour amount: {amount_int:,}",
+                    color=0xff0000
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+                
         except ValueError:
             embed = discord.Embed(
                 title="❌ Invalid Amount",
