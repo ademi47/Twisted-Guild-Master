@@ -106,7 +106,7 @@ class AIService:
             )
             
             answer = response.choices[0].message.content
-            output_tokens = response.usage.completion_tokens
+            output_tokens = response.usage.completion_tokens if response.usage else 0
             
             # Log usage for tracking
             self.log_usage(guild_id, user_id, len(trimmed_prompt), output_tokens)
@@ -116,7 +116,7 @@ class AIService:
             if original_length > MAX_INPUT_CHARS:
                 usage_info += f"\n*Note: Your message was trimmed from {original_length} to {MAX_INPUT_CHARS} characters*"
             
-            return True, answer + usage_info
+            return True, (answer or "No response received") + usage_info
             
         except Exception as e:
             error_msg = str(e)
