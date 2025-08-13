@@ -4,6 +4,8 @@ from discord import app_commands
 import random
 import time
 import logging
+from database import DatabaseManager
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -212,5 +214,271 @@ async def setup_commands(bot: commands.Bot):
         )
         embed.set_footer(text=f"Flipped by {ctx.author.display_name}")
         await ctx.send(embed=embed)
+
+    # ==================== CONTRIBUTION COMMANDS ====================
+    
+    # Create material choices for the dropdown
+    async def get_material_choices() -> List[app_commands.Choice[str]]:
+        """Get material choices for the dropdown"""
+        try:
+            materials = DatabaseManager.get_all_materials()
+            choices = []
+            for material in materials[:25]:  # Discord limit is 25 choices
+                choices.append(app_commands.Choice(
+                    name=material['display_name'], 
+                    value=material['name']
+                ))
+            return choices
+        except Exception as e:
+            logger.error(f"Error getting material choices: {e}")
+            return []
+
+    @bot.tree.command(name="contribute", description="Log your contribution to the guild")
+    @app_commands.describe(
+        material="The material you're contributing",
+        amount="The amount you're contributing (must be positive)"
+    )
+    async def contribute(interaction: discord.Interaction, material: str, amount: int):
+        """Log a member's contribution"""
+        # Ensure this is used in a guild
+        if not interaction.guild:
+            embed = discord.Embed(
+                title="❌ Error",
+                description="This command can only be used in a server!",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        # Validate amount
+        if amount <= 0:
+            embed = discord.Embed(
+                title="❌ Invalid Amount",
+                description="Amount must be a positive number!",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        try:
+            # Ensure guild and member exist in database
+            DatabaseManager.ensure_guild_exists(interaction.guild.id, interaction.guild.name)
+            DatabaseManager.ensure_member_exists(
+                interaction.user.id,
+                interaction.user.name,
+                interaction.user.display_name
+            )
+            
+            # Verify material exists
+            material_info = DatabaseManager.get_material_by_name(material)
+            if not material_info:
+                embed = discord.Embed(
+                    title="❌ Invalid Material",
+                    description="The specified material is not valid. Please use the dropdown to select a material.",
+                    color=0xff0000
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+            
+            # Add contribution
+            success = DatabaseManager.add_contribution(
+                interaction.guild.id,
+                interaction.user.id,
+                material,
+                amount
+            )
+            
+            if success:
+                embed = discord.Embed(
+                    title="✅ Contribution Recorded",
+                    description=f"{interaction.user.mention} contributed **{amount:,}** {material_info['display_name']}!",
+                    color=0x00ff00
+                )
+                embed.add_field(name="Material", value=material_info['display_name'], inline=True)
+                embed.add_field(name="Amount", value=f"{amount:,}", inline=True)
+                embed.add_field(name="Contributor", value=interaction.user.display_name, inline=True)
+                embed.set_footer(text=f"Guild: {interaction.guild.name}")
+                await interaction.response.send_message(embed=embed)
+            else:
+                embed = discord.Embed(
+                    title="❌ Error",
+                    description="Failed to record contribution. Please try again.",
+                    color=0xff0000
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                
+        except Exception as e:
+            logger.error(f"Error in contribute command: {e}")
+            embed = discord.Embed(
+                title="❌ Error",
+                description="An unexpected error occurred. Please try again later.",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # Set up the material autocomplete
+    @contribute.autocomplete('material')
+    async def material_autocomplete(
+        interaction: discord.Interaction,
+        current: str,
+    ) -> List[app_commands.Choice[str]]:
+        """Autocomplete for material selection"""
+        try:
+            materials = DatabaseManager.get_all_materials()
+            choices = []
+            
+            # Filter materials based on current input
+            for material in materials:
+                if current.lower() in material['display_name'].lower() or current.lower() in material['name'].lower():
+                    choices.append(app_commands.Choice(
+                        name=material['display_name'], 
+                        value=material['name']
+                    ))
+                    if len(choices) >= 25:  # Discord limit
+                        break
+            
+            # If no matches, show all materials
+            if not choices:
+                for material in materials[:25]:
+                    choices.append(app_commands.Choice(
+                        name=material['display_name'], 
+                        value=material['name']
+                    ))
+            
+            return choices
+        except Exception as e:
+            logger.error(f"Error in material autocomplete: {e}")
+            return []
+
+    @bot.tree.command(name="contributions", description="View your contributions or another member's contributions")
+    @app_commands.describe(member="The member to view contributions for (optional)")
+    async def view_contributions(interaction: discord.Interaction, member: discord.Member = None):
+        """View contributions for a member"""
+        if not interaction.guild:
+            embed = discord.Embed(
+                title="❌ Error",
+                description="This command can only be used in a server!",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        target_member = member or interaction.user
+        
+        try:
+            # Ensure member exists in database
+            DatabaseManager.ensure_member_exists(
+                target_member.id,
+                target_member.name,
+                target_member.display_name
+            )
+            
+            contributions = DatabaseManager.get_member_contributions(
+                interaction.guild.id,
+                target_member.id
+            )
+            
+            if not contributions:
+                embed = discord.Embed(
+                    title="📊 No Contributions",
+                    description=f"{target_member.display_name} hasn't made any contributions yet.",
+                    color=0x0099ff
+                )
+                await interaction.response.send_message(embed=embed)
+                return
+            
+            # Group contributions by material
+            material_totals = {}
+            for contrib in contributions:
+                material = contrib['material_name']
+                if material in material_totals:
+                    material_totals[material] += contrib['amount']
+                else:
+                    material_totals[material] = contrib['amount']
+            
+            embed = discord.Embed(
+                title=f"📊 {target_member.display_name}'s Contributions",
+                color=0x0099ff
+            )
+            embed.set_thumbnail(url=target_member.avatar.url if target_member.avatar else target_member.default_avatar.url)
+            
+            # Add fields for each material
+            total_contributions = 0
+            for material, amount in sorted(material_totals.items(), key=lambda x: x[1], reverse=True):
+                embed.add_field(
+                    name=material,
+                    value=f"{amount:,}",
+                    inline=True
+                )
+                total_contributions += amount
+            
+            embed.add_field(
+                name="🏆 Total Contributions",
+                value=f"{total_contributions:,}",
+                inline=False
+            )
+            
+            embed.set_footer(text=f"Guild: {interaction.guild.name} • Total entries: {len(contributions)}")
+            await interaction.response.send_message(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Error in view_contributions command: {e}")
+            embed = discord.Embed(
+                title="❌ Error",
+                description="An unexpected error occurred. Please try again later.",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @bot.tree.command(name="leaderboard", description="View the top contributors in this guild")
+    async def leaderboard(interaction: discord.Interaction):
+        """View top contributors leaderboard"""
+        if not interaction.guild:
+            embed = discord.Embed(
+                title="❌ Error",
+                description="This command can only be used in a server!",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        try:
+            top_contributors = DatabaseManager.get_top_contributors(interaction.guild.id, 10)
+            
+            if not top_contributors:
+                embed = discord.Embed(
+                    title="🏆 Contribution Leaderboard",
+                    description="No contributions have been recorded yet!",
+                    color=0x0099ff
+                )
+                await interaction.response.send_message(embed=embed)
+                return
+            
+            embed = discord.Embed(
+                title="🏆 Top Contributors",
+                description=f"Leaderboard for {interaction.guild.name}",
+                color=0xffd700
+            )
+            
+            # Add leaderboard entries
+            for i, contributor in enumerate(top_contributors, 1):
+                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+                embed.add_field(
+                    name=f"{medal} {contributor['display_name']}",
+                    value=f"{contributor['total_contributions']:,} total contributions",
+                    inline=False
+                )
+            
+            embed.set_footer(text=f"Use /contributions to view detailed breakdown")
+            await interaction.response.send_message(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Error in leaderboard command: {e}")
+            embed = discord.Embed(
+                title="❌ Error",
+                description="An unexpected error occurred. Please try again later.",
+                color=0xff0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
 
     logger.info("Commands setup complete")

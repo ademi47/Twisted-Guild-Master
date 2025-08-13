@@ -35,6 +35,8 @@ Preferred communication style: Simple, everyday language.
 - **Auto-sync Commands**: Automatic synchronization of slash commands with Discord on bot startup
 - **Dynamic Status**: Configurable bot presence and activity status
 - **Welcome System**: Automated welcome messages when joining new servers
+- **Contribution Tracking**: Database-powered system for logging and tracking guild member contributions with material autocomplete
+- **Leaderboards**: View top contributors and detailed contribution breakdowns per member
 
 ## External Dependencies
 
@@ -42,6 +44,8 @@ Preferred communication style: Simple, everyday language.
 - **discord.py**: Primary Discord API wrapper library for bot functionality
 - **python-dotenv**: Environment variable management for secure configuration
 - **asyncio**: Asynchronous programming support for Discord's async API
+- **sqlalchemy**: Database ORM for contribution tracking and data persistence
+- **psycopg2-binary**: PostgreSQL database adapter for Python
 
 ### Discord API Integration
 - **Discord Developer Portal**: Bot token and application management

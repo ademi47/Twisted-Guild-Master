@@ -31,6 +31,12 @@ from bot.commands import setup_commands
 async def main():
     """Main function to start the bot"""
     try:
+        # Initialize database
+        from models import create_tables, init_default_materials
+        create_tables()
+        init_default_materials()
+        logger.info("Database initialized successfully")
+        
         # Setup events and commands
         await setup_events(bot)
         await setup_commands(bot)
