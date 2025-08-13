@@ -363,7 +363,7 @@ async def setup_commands(bot: commands.Bot):
         material="The material you're contributing",
         amount="The amount you're contributing (must be positive)"
     )
-    async def contribute(interaction: discord.Interaction, material: str, amount: int):
+    async def contribute(interaction: discord.Interaction, material: str, amount: str):
         """Log a member's contribution"""
         # Ensure this is used in a guild
         if not interaction.guild:
@@ -375,11 +375,21 @@ async def setup_commands(bot: commands.Bot):
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
         
-        # Validate amount
-        if amount <= 0:
+        # Validate and parse amount
+        try:
+            amount_int = int(amount)
+            if amount_int <= 0:
+                embed = discord.Embed(
+                    title="❌ Invalid Amount",
+                    description="Amount must be a positive number!",
+                    color=0xff0000
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+        except ValueError:
             embed = discord.Embed(
                 title="❌ Invalid Amount",
-                description="Amount must be a positive number!",
+                description="Amount must be a valid integer!",
                 color=0xff0000
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -410,17 +420,17 @@ async def setup_commands(bot: commands.Bot):
                 interaction.guild.id,
                 interaction.user.id,
                 material,
-                amount
+                amount_int
             )
             
             if success:
                 embed = discord.Embed(
                     title="✅ Contribution Recorded",
-                    description=f"{interaction.user.mention} contributed **{amount:,}** {material_info['display_name']}!",
+                    description=f"{interaction.user.mention} contributed **{amount_int:,}** {material_info['display_name']}!",
                     color=0x00ff00
                 )
                 embed.add_field(name="Material", value=material_info['display_name'], inline=True)
-                embed.add_field(name="Amount", value=f"{amount:,}", inline=True)
+                embed.add_field(name="Amount", value=f"{amount_int:,}", inline=True)
                 embed.add_field(name="Contributor", value=interaction.user.display_name, inline=True)
                 embed.set_footer(text=f"Guild: {interaction.guild.name}")
                 await interaction.response.send_message(embed=embed)

@@ -187,7 +187,7 @@ class DatabaseManager:
                 Contribution.member_id == member_id
             ).scalar()
             
-            return (total_points or 0) / 100.0  # Convert back to decimal
+            return float(total_points or 0) / 100.0  # Convert back to decimal
         finally:
             session.close()
     
@@ -211,7 +211,7 @@ class DatabaseManager:
                 contributors.append({
                     "display_name": display_name,
                     "username": username,
-                    "total_points": (total_points or 0) / 100.0  # Convert to decimal
+                    "total_points": float(total_points or 0) / 100.0  # Convert to decimal
                 })
             
             return contributors
@@ -232,11 +232,11 @@ class DatabaseManager:
             
             result = []
             for contribution, material in contributions:
-                points = (contribution.amount * material.value) / 100.0
+                points = float(contribution.amount * material.value) / 100.0
                 result.append({
                     "material_name": material.display_name,
                     "amount": contribution.amount,
-                    "value_per_unit": material.value / 100.0,
+                    "value_per_unit": float(material.value) / 100.0,
                     "points": points,
                     "created_at": contribution.created_at
                 })
